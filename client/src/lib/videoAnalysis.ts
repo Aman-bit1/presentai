@@ -372,8 +372,8 @@ function generateFeedback(
   expressionScore: number,
   eyeContactScore: number,
   bodyLanguageScore: number
-) {
-  const feedback = [];
+): Array<{ type: "positive" | "negative" | "neutral"; message: string; timestamp?: number }> {
+  const feedback: Array<{ type: "positive" | "negative" | "neutral"; message: string; timestamp?: number }> = [];
   
   // Add positive feedback for high scores
   if (expressionScore > 80) {

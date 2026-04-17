@@ -1,14 +1,9 @@
-import { 
-  users, type User, type InsertUser,
-  evaluations, type Evaluation, type InsertEvaluation, type UpdateEvaluation
-} from "@shared/schema";
+import { users, type User, type InsertUser, type Evaluation, type InsertEvaluation, type UpdateEvaluation, type FeedbackItem, type AnalysisDetails } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
-  // Evaluation methods
   getEvaluation(id: number): Promise<Evaluation | undefined>;
   getEvaluationsByUserId(userId: number): Promise<Evaluation[]>;
   createEvaluation(evaluation: InsertEvaluation): Promise<Evaluation>;
@@ -28,14 +23,10 @@ export class MemStorage implements IStorage {
     this.evaluationIdCounter = 1;
   }
 
-  async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
-  }
+  async getUser(id: number): Promise<User | undefined> { return this.users.get(id); }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    return Array.from(this.users.values()).find((user) => user.username === username);
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
@@ -45,9 +36,7 @@ export class MemStorage implements IStorage {
     return user;
   }
 
-  async getEvaluation(id: number): Promise<Evaluation | undefined> {
-    return this.evaluations.get(id);
-  }
+  async getEvaluation(id: number): Promise<Evaluation | undefined> { return this.evaluations.get(id); }
 
   async getEvaluationsByUserId(userId: number): Promise<Evaluation[]> {
     return Array.from(this.evaluations.values())
@@ -61,12 +50,12 @@ export class MemStorage implements IStorage {
 
   async createEvaluation(insertEvaluation: InsertEvaluation): Promise<Evaluation> {
     const id = this.evaluationIdCounter++;
-    const now = new Date();
-    
     const evaluation: Evaluation = {
-      ...insertEvaluation,
       id,
-      createdAt: now,
+      userId: insertEvaluation.userId ?? null,
+      title: insertEvaluation.title,
+      videoUrl: insertEvaluation.videoUrl,
+      createdAt: new Date(),
       status: "processing",
       overallScore: null,
       confidenceScore: null,
@@ -76,7 +65,6 @@ export class MemStorage implements IStorage {
       feedback: null,
       analysisDetails: null
     };
-    
     this.evaluations.set(id, evaluation);
     return evaluation;
   }
@@ -84,14 +72,32 @@ export class MemStorage implements IStorage {
   async updateEvaluation(id: number, update: UpdateEvaluation): Promise<Evaluation | undefined> {
     const evaluation = this.evaluations.get(id);
     if (!evaluation) return undefined;
-    
-    const updatedEvaluation: Evaluation = {
-      ...evaluation,
-      ...update
+
+    const feedbackData: FeedbackItem[] | null = update.feedback
+      ? (Array.isArray(update.feedback) ? update.feedback as FeedbackItem[] : null)
+      : evaluation.feedback;
+
+    const detailsData: AnalysisDetails | null = update.analysisDetails
+      ? (update.analysisDetails as AnalysisDetails)
+      : evaluation.analysisDetails;
+
+    const updated: Evaluation = {
+      id: evaluation.id,
+      userId: evaluation.userId,
+      title: evaluation.title,
+      videoUrl: evaluation.videoUrl,
+      createdAt: evaluation.createdAt,
+      status: update.status ?? evaluation.status,
+      overallScore: update.overallScore ?? evaluation.overallScore,
+      confidenceScore: update.confidenceScore ?? evaluation.confidenceScore,
+      facialExpressionsScore: update.facialExpressionsScore ?? evaluation.facialExpressionsScore,
+      eyeContactScore: update.eyeContactScore ?? evaluation.eyeContactScore,
+      bodyLanguageScore: update.bodyLanguageScore ?? evaluation.bodyLanguageScore,
+      feedback: feedbackData,
+      analysisDetails: detailsData
     };
-    
-    this.evaluations.set(id, updatedEvaluation);
-    return updatedEvaluation;
+    this.evaluations.set(id, updated);
+    return updated;
   }
 }
 
